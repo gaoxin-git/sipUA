@@ -13,21 +13,25 @@ from ui import Ui_Dialog
 from PyQt5.QtWidgets import QApplication, QDialog
 from PyQt5 import QtWidgets,QtCore
 
-UA_INFO = namedtuple('UA_INFO',['ip', 'port','name'])
+UA_INFO = namedtuple('UA_INFO',['ip', 'port','name','passwd'])
 
-ua = UA_INFO('0.0.0.0',12345,'112')
+ua = UA_INFO('192.168.1.5',12345,'112','123456')
 
 HOST,UDPPORT = ua.ip,ua.port   #for udp
 
-sips = "11.0.0.3"
+sips = "192.168.1.5"
 call_id = "fjkdlsjfkdlsjfkldsf"
 
 cseq_reg = 1
 cseq_call = 1
 branch ="jkfljkslj32jkl"
 rinstance = "75495jruiou3o2u3"
+tag = '23u292jotjo'
+nc = '00000001'#注意为固定8字节，表示请求认证的次数，不加引号
 
-name2call = "111"
+cnonce = "d20ad7febce41cc979e00a1663667608"
+
+name2call = "112"
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.bind((HOST,UDPPORT))
@@ -38,7 +42,10 @@ s.bind((HOST,UDPPORT))
 # nSendBuf=2*1024*1024
 # s.setsockopt(socket.SOL_SOCKET,socket.SO_SNDBUF,nSendBuf)
 
-
+def md5(str):
+    m = hashlib.md5()  # 声明一个md5对象
+    m.update(str.encode('utf-8', 'ignore'))
+    return m.hexdigest()
 
 #branch标识一个事务
 # sip协议描述一个transaction由5个必要部分组成：from、to、Via头中的branch参数、call-id和cseq
@@ -91,7 +98,7 @@ def makeInviteMsg(sips,ua,branch,tag,call_id,cseq,rinstance,name2call):
 
     return cmd+route+maxForward+Contact+To+From+Call_id+cseq+exp+uagent+ContentType+cl+content
 
-def makeAuthMsg(sips,ua,branch,tag,call_id,cseq,rinstance,nonce,realm,responcce,cnonce,nc):
+def makeAuthMsg(sips,ua,branch,tag,call_id,cseq,rinstance,nonce,realm,responcce,nc):
     cmd = "REGISTER sip:{0};transport=UDP SIP/2.0\r\n".format(sips)
     route = "Via:SIP/2.0/UDP {0}:{1};branch=z9hG4bk-{2}\r\n".format(ua.ip,ua.port,branch)
     maxForward ="Max-Forwards:70\r\n"
@@ -104,12 +111,13 @@ def makeAuthMsg(sips,ua,branch,tag,call_id,cseq,rinstance,nonce,realm,responcce,
     allow = "Allow: INVITE, ACK, CANCEL, BYE, NOTIFY, REFER, MESSAGE, OPTIONS, INFO, SUBSCRIBE\r\n"
     spt  = "Supported: replaces, norefersub, extended-refer, timer, X-cisco-serviceuri\r\n"
     uagent = "User-Agent: py\r\n"
+    #注意auth中的双引号
     auth = 'Authorization: Digest '\
             +'username="{}",'.format(ua.name) \
-            +'{},'.format(realm) \
-            +'{}'.format(nonce) \
-            +'uri="sip:{};'.format(sips) \
-            +'transport=UDP",response="{}",'.format(responcce) \
+            +'realm="{}",'.format(realm) \
+            +'nonce="{}",'.format(nonce) \
+            +'uri="sip:{};transport=UDP",'.format(sips) \
+            +'response="{}",'.format(responcce) \
             +'cnonce="{}",'.format(cnonce) \
             +'nc={},qop=auth,algorithm=MD5'.format(nc)
 
@@ -136,9 +144,11 @@ def decodeSensorData(msg): #格式验证和数据提取
     ls = msg.splitlines()
     code =None
     status=None
-    seq=None
-    cmd=None
     call_id=None
+    nonce = None
+    realm = None
+    method = None
+    qop = None
     if not msg:
         return
     for msg in ls:
@@ -146,48 +156,50 @@ def decodeSensorData(msg): #格式验证和数据提取
             code,status = getAckCode(msg)
             print(code,status)
         elif msg.startswith("CSeq"):
-            seq, cmd = getCSeq(msg)
-            print(seq, cmd)
+            seq, method = getCSeq(msg)
+            print(seq, method)
         elif msg.startswith("Call-ID"):
             call_id = getCallID(msg)
             print(call_id)
-    if cmd == "REGISTER" and code=="200":
+        elif msg.startswith("WWW-Authenticate"):
+            realm, nonce, algorithm, qop = getAuth(msg)
+            print(realm, nonce, algorithm, qop)
+    if method == "REGISTER" and code=="200":
         print("ua register successful-------------------------")
-    if cmd == "INVITE" and code.startswith('4'):
+    if method == "INVITE" and code.startswith('4'):
         print("ua call failed-------------------------")
-    if cmd == "REGISTER" and code == "401" and status == "Unauthorized":
+    if method == "REGISTER" and code == "401" and status == "Unauthorized":
         #回复登录密码信息
-        genResponce(nonce,username,realm,passwd,method,uri)
+        resp= genResponce(nonce,ua.name,realm,ua.passwd,method,qop)
+        authmsg = makeAuthMsg(sips,ua,branch,tag,call_id,cseq_reg,rinstance,nonce,realm,resp,nc)
+        sendAuth(authmsg)
+        print('sent auth__________',authmsg)
 
-def genResponce(nonce,username,realm,passwd,method,uri):
+sss = 'SIP/2.0 401 Unauthorized\r\n'\
+        'Via: SIP/2.0/UDP 192.168.1.5:12345;branch=z9hG4bk-jkfljkslj32jkl;received=11.0.0.88;received=11.0.0.88\r\n'\
+        'From: 112 <sip:112@192.168.1.5;transport=UDP>;tag=1233ffs\r\n'\
+        'To: 112 <sip:112@0192.168.1.5;transport=UDP>;tag=1193417672\r\n'\
+        'Call-ID: fjkdlsjfkdlsjfkldsf\r\n'\
+        'CSeq: 1 REGISTER\r\n'\
+        'WWW-Authenticate: Digest realm="ltsip.cn", nonce="02fbfa80e68e9c1bc189975eaeadc6cb", algorithm=MD5, qop="auth"\r\n'\
+        'Subject: Rel\r\n'\
+        'Content-Length: 0\r\n'
+s.sendto(sss.encode('utf-8', 'ignore'), (sips, 12345))
+
+def genResponce(nonce,username,realm,passwd,method,qop):
+    # 普通认证方法：容易破解
     # 　　1)HASH1 = MD5(username:realm: passwd) #不同字段中间加冒号字符
-    #
     # 　　2)HASH2 = MD5(method:uri)
-    #
     # 　　3)response = MD5(HA1:nonce: HA2)
     #如果质量保护指定是“auth”或者“auth - int”, 响应结果算法是
     # response = MD5(HA1:nonce:nonceCount:cnonce:qop:HA2)
-    def md5(str):
-        m = hashlib.md5()  # 声明一个md5对象
-        m.update(str.encode('utf-8','ignore'))
-        return m.hexdigest()
-    # ha1 = md5('115:ltsip.cn:123456')
-    ha1 = md5("Mufasa:testrealm@host.com:Circle Of Life")
-    print(ha1)
-    # ha2 = md5('REGISTER:sip:11.0.0.3')
-    ha2 = md5("GET:/dir/index.html")
-    print(ha2)
-    nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093"
-    cnonce = "0a4f113b"
-    # cnonce = "d20ad7febce41cc979e00a1663667608"
-    nc = '00000001'#注意为固定8字节，表示请求认证的次数，不加引号
-    qop = 'auth'
+    ha1 = md5('{}:{}:{}'.format(username,realm,passwd))
+
+    uri = 'sip:{};transport=UDP'.format(sips)
+    ha2 = md5('{}:{}'.format(method,uri))
     res = md5(ha1+':{}:{}:{}:{}:'.format(nonce,nc,cnonce,qop)+ha2)
-    print(res)
-
-
-
-
+    print('RESPONCE:\n',res)
+    return res
 
 def getAckCode(msg):
     if not msg.startswith("SIP/2.0"):
@@ -215,17 +227,35 @@ def getCallID(msg):
     return call_id
 
 def getAuth(msg):
+    #例子'WWW-Authenticate: Digest realm="ltsip.cn", nonce="02fbfa80e68e9c1bc189975eaeadc6cb", algorithm=MD5, qop="auth"'
+    #注意字符串中的逗号和引号
     if not msg.startswith("WWW-Authenticate"):
         return None
-    subs = msg.split(' ')
-    if len(subs) < 4:
+    msgr = msg.replace(',',' ').replace('\"','')  #替换原有的逗号为空格,并去掉引号
+    subs = msgr.split(' ')
+    if len(subs) < 5:
         return None
-    realm,nonce, algorithm = subs[2], subs[3], subs[4]
-    return (realm,nonce,algorithm)
+    realm = None
+    nonce = None
+    algorithm = None
+    qop = None
+    for ss in subs:
+        if ss.startswith("realm"):
+            realm = ss.replace('realm=','')
+            print('realm:',realm)
+        elif ss.startswith("nonce"):
+            nonce = ss.replace('nonce=','')
+        elif ss.startswith("algorithm"):
+            algorithm = ss.replace('algorithm=','')
+        elif ss.startswith("qop"):
+            qop = ss.replace('qop=','')
+    return (realm,nonce,algorithm,qop)
 
-# regmsg = makeRegisterMsg(sips,ua,branch,"1233ffs",call_id,cseq_reg,rinstance)
-# s.sendto(regmsg.encode('utf-8','ignore'),("127.0.0.1",5060))
-
+def sendAuth(authmsg):
+    global cseq_reg
+    s.sendto(authmsg.encode('utf-8', 'ignore'), (sips, 5060))
+    cseq_reg += 1
+    print("ua Sent register msg............\n",authmsg)
 
 class MyDialog(QtWidgets.QDialog,Ui_Dialog):
     mySignal = QtCore.pyqtSignal(int)
@@ -241,7 +271,7 @@ class MyDialog(QtWidgets.QDialog,Ui_Dialog):
 
     def sendReg(self):
         global cseq_reg, cseq_call
-        regmsg = makeRegisterMsg(sips, ua, branch, "1233ffs", call_id, cseq_reg, rinstance)
+        regmsg = makeRegisterMsg(sips, ua, branch, "tag", call_id, cseq_reg, rinstance)
         s.sendto(regmsg.encode('utf-8', 'ignore'), (sips, 5060))
         cseq_reg += 1
         print("ua Sent register msg............\n",regmsg)
@@ -253,9 +283,6 @@ class MyDialog(QtWidgets.QDialog,Ui_Dialog):
         cseq_call += 1
         print("ua Sent calling msg............\n", callmsg)
 
-    def sendAuth(self,num):
-        # self.lcdNumber.display(num)
-        pass
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
