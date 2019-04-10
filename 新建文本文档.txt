@@ -1,0 +1,74 @@
+REGISTER sip:127.0.0.1;transport=UDP SIP/2.0
+Via: SIP/2.0/UDP 127.0.0.1:5068;branch=z9hG4bK-d8754z-faa7d30b1f7144b0-1---d8754z-
+Max-Forwards: 70
+Contact: <sip:111@127.0.0.1:5068;rinstance=1ce64ba85ed30db2;transport=UDP>
+To: "111"<sip:111@127.0.0.1;transport=UDP>
+From: "111"<sip:111@127.0.0.1;transport=UDP>;tag=060a240b
+Call-ID: NGU1Y2E4OWZlOGExMzFhNTRmM2EyYWMzNDMxYWRhMGM.
+CSeq: 1 REGISTER
+Expires: 3600
+Allow: INVITE, ACK, CANCEL, BYE, NOTIFY, REFER, MESSAGE, OPTIONS, INFO, SUBSCRIBE
+Supported: replaces, norefersub, extended-refer, timer, X-cisco-serviceuri
+User-Agent: Zoiper for Windows 2.43 r24984
+Allow-Events: presence, kpml
+Content-Length: 0	
+
+
+INVITE sip:112@127.0.0.1;transport=UDP SIP/2.0
+Via: SIP/2.0/UDP 127.0.0.1:5068;branch=z9hG4bK-d8754z-120c79c31d16afce-1---d8754z-
+Max-Forwards: 70
+Contact: <sip:111@127.0.0.1:5068;transport=UDP>
+To: <sip:112@127.0.0.1;transport=UDP>
+From: "111"<sip:111@127.0.0.1;transport=UDP>;tag=f829db0a
+Call-ID: YWIyM2M3ZTVhNTlhZWFiZmYwYjM0NDYzMGEyM2M1Yzc.
+CSeq: 1 INVITE
+Allow: INVITE, ACK, CANCEL, BYE, NOTIFY, REFER, MESSAGE, OPTIONS, INFO, SUBSCRIBE
+Content-Type: application/sdp
+Supported: replaces, norefersub, extended-refer, timer, X-cisco-serviceuri
+User-Agent: Zoiper for Windows 2.43 r24984
+Allow-Events: presence, kpml
+Content-Length: 321
+
+v=0
+o=Zoiper_user 0 0 IN IP4 127.0.0.1
+s=Zoiper_session
+c=IN IP4 127.0.0.1
+t=0 0
+m=audio 6000 RTP/AVP 3 0 110 98 8 101
+a=rtpmap:3 GSM/8000
+a=rtpmap:0 PCMU/8000
+a=rtpmap:110 speex/8000
+a=rtpmap:98 iLBC/8000
+a=fmtp:98 mode=20
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+a=sendrecv
+
+ SIP/2.0 401 Unauthorized
+Via: SIP/2.0/UDP 0.0.0.0:12345;branch=z9hG4bk-jkfljkslj32jkl;received=11.0.0.88;received=11.0.0.88
+From: 112 <sip:112@0.0.0.0;transport=UDP>;tag=1233ffs
+To: 112 <sip:112@0.0.0.0;transport=UDP>;tag=1193417672
+Call-ID: fjkdlsjfkdlsjfkldsf
+CSeq: 1 REGISTER
+WWW-Authenticate: Digest realm="ltsip.cn", nonce="02fbfa80e68e9c1bc189975eaeadc6cb", algorithm=MD5, qop="auth"
+Subject: Rel
+Content-Length: 0
+
+
+REGISTER sip:11.0.0.3;transport=UDP SIP/2.0
+Via: SIP/2.0/UDP 11.0.0.88:5068;branch=z9hG4bK-d8754z-abaf462b309aa032-1---d8754z-
+Max-Forwards: 70
+Contact: <sip:115@11.0.0.88:5068;rinstance=6cff3b534328908d;transport=UDP>
+To: "115"<sip:115@11.0.0.3;transport=UDP>
+From: "115"<sip:115@11.0.0.3;transport=UDP>;tag=407c5e5a
+Call-ID: ZDQwNjFiN2VjNjk4YTE0MmFlYTY5MzFjNzZmMDlmOGU.
+CSeq: 2 REGISTER
+Expires: 3600
+Allow: INVITE, ACK, CANCEL, BYE, NOTIFY, REFER, MESSAGE, OPTIONS, INFO, SUBSCRIBE
+Supported: replaces, norefersub, extended-refer, timer, X-cisco-serviceuri
+User-Agent: Zoiper for Windows 2.43 r24984
+Authorization: Digest username="115",realm="ltsip.cn",nonce="02fbfa80e68e9c1bc189975eaeadc6cb",uri="sip:11.0.0.3;transport=UDP",response="277c78bfb96d7deb0846f73cc28e42c3",cnonce="d20ad7febce41cc979e00a1663667608",nc=00000001,qop=auth,algorithm=MD5
+Allow-Events: presence, kpml
+Content-Length: 0
+To: "115"<sip:115@11.0.0.3;transport=UDP>
