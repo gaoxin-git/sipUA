@@ -13,13 +13,14 @@ from ui import Ui_Dialog
 from PyQt5.QtWidgets import QApplication, QDialog
 from PyQt5 import QtWidgets,QtCore
 
-UA_INFO = namedtuple('UA_INFO',['ip', 'port','name','passwd'])
+UA_INFO = namedtuple('UA_INFO',['ip', 'port','rtp_port','name','passwd'])
 
-ua = UA_INFO('192.168.1.5',12345,'112','123456')
+ua = UA_INFO('11.0.0.88',12345,10000,'112','123456')
 
 HOST,UDPPORT = ua.ip,ua.port   #for udp
 
-sips = "192.168.1.5"
+sips = "11.0.0.3"
+sips_port = "5060"
 call_id = "fjkdlsjfkdlsjfkldsf"
 
 cseq_reg = 1
@@ -29,9 +30,11 @@ rinstance = "75495jruiou3o2u3"
 tag = '23u292jotjo'
 nc = '00000001'#注意为固定8字节，表示请求认证的次数，不加引号
 
+tag_in = None
+
 cnonce = "d20ad7febce41cc979e00a1663667608"
 
-name2call = "112"
+name2call = "111"
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.bind((HOST,UDPPORT))
@@ -56,7 +59,7 @@ def makeRegisterMsg(sips,ua,branch,tag,call_id,cseq,rinstance):
     cmd = "REGISTER sip:{0};transport=UDP SIP/2.0\r\n".format(sips)
     route = "Via:SIP/2.0/UDP {0}:{1};branch=z9hG4bk-{2}\r\n".format(ua.ip,ua.port,branch)
     maxForward ="Max-Forwards:70\r\n"
-    Contact = "Contact:<sip:{0}@{1}:{2};rinstance={3};transport=UDP>\r\n".format(ua.name,ua.name,ua.ip,rinstance)
+    Contact = "Contact:<sip:{0}@{1}:{2};rinstance={3};transport=UDP>\r\n".format(ua.name,ua.ip,ua.port,rinstance)
     To ="To:{0}<sip:{1}@{2};transport=UDP>\r\n".format(ua.name,ua.name,ua.ip)
     From = "From:{0}<sip:{1}@{2};transport=UDP>;tag={3}\r\n".format(ua.name, ua.name,ua.ip,tag)
     Call_id = "Call-ID:{0}\r\n".format(call_id)  #全网唯一
@@ -88,12 +91,12 @@ def makeInviteMsg(sips,ua,branch,tag,call_id,cseq,rinstance,name2call):
     cl = "Content-Length: 127\r\n"
 
     content = "\r\nv=0\r\n"
-    content += "o=- 0 0 IN IP4 127.0.0.1\r\n"
+    content += "o=- 0 0 IN IP4 {}\r\n".format(ua.ip)
     content += "s=session\r\n"
-    content += "c=IN IP4 127.0.0.1\r\n"
+    content += "c=IN IP4 {}\r\n".format(ua.ip)
     content += "b=CT:1000\r\n"
     content += "t=0 0\r\n"
-    content += "m=audio 10000 RTP/AVP 8\r\n"
+    content += "m=audio {} RTP/AVP 8\r\n".format(ua.rtp_port)
     content += "a=rtpmap:8 PCMA/8000\r\n"
 
     return cmd+route+maxForward+Contact+To+From+Call_id+cseq+exp+uagent+ContentType+cl+content
@@ -102,7 +105,7 @@ def makeAuthMsg(sips,ua,branch,tag,call_id,cseq,rinstance,nonce,realm,responcce,
     cmd = "REGISTER sip:{0};transport=UDP SIP/2.0\r\n".format(sips)
     route = "Via:SIP/2.0/UDP {0}:{1};branch=z9hG4bk-{2}\r\n".format(ua.ip,ua.port,branch)
     maxForward ="Max-Forwards:70\r\n"
-    Contact = "Contact:<sip:{0}@{1}:{2};rinstance={3};transport=UDP>\r\n".format(ua.name,ua.name,ua.ip,rinstance)
+    Contact = "Contact:<sip:{0}@{1}:{2};rinstance={3};transport=UDP>\r\n".format(ua.name,ua.ip,ua.port,rinstance)
     To ="To:{0}<sip:{1}@{2};transport=UDP>\r\n".format(ua.name,ua.name,ua.ip)
     From = "From:{0}<sip:{1}@{2};transport=UDP>;tag={3}\r\n".format(ua.name, ua.name,ua.ip,tag)
     Call_id = "Call-ID:{0}\r\n".format(call_id)  #全网唯一
@@ -125,6 +128,49 @@ def makeAuthMsg(sips,ua,branch,tag,call_id,cseq,rinstance,nonce,realm,responcce,
     cl = "Content-Length: 0\r\n"
 
     return cmd+route+maxForward+Contact+To+From+Call_id+cseq+exp+uagent+auth+cl
+
+def makeInviteAck(sips,ua,branch,tag_local,call_id,cseq_ack,tag_incoming):
+    cmd = "ACK sip:{0}@{1}:{2};transport=UDP SIP/2.0\r\n".format(name2call,sips,sips_port)
+    route = "Via:SIP/2.0/UDP {0}:{1};branch=z9hG4bk-{2}\r\n".format(ua.ip,ua.port,branch)
+    maxForward ="Max-Forwards:70\r\n"
+    Contact = "Contact:<sip:{0}@{1}:{2};transport=UDP>\r\n".format(ua.name,ua.ip,ua.port)
+    To ="To:<sip:{0}@{1};transport=UDP>;tag={2}\r\n".format(name2call,sips,tag_incoming)
+    From = "From:{0}<sip:{1}@{2};transport=UDP>;tag={3}\r\n".format(ua.name, ua.name,sips,tag_local)
+    Call_id = "Call-ID:{0}\r\n".format(call_id)  #全网唯一
+    cseq = "CSeq: {} ACK\r\n".format(cseq_ack)
+    uagent = "User-Agent: py\r\n"
+    cl = "Content-Length: 0\r\n"
+    content = "\r\n"
+    return cmd+route+maxForward+Contact+To+From+Call_id+cseq+uagent+cl+content
+
+def makeByeMsg(sips,ua,branch,tag_local,call_id,cseq_ack,tag_incoming):
+    cmd = "BYE sip:{0}@{1}:{2};transport=UDP SIP/2.0\r\n".format(name2call,sips,sips_port)
+    route = "Via:SIP/2.0/UDP {0}:{1};branch=z9hG4bk-{2}\r\n".format(ua.ip,ua.port,branch)
+    maxForward ="Max-Forwards:70\r\n"
+    Contact = "Contact:<sip:{0}@{1}:{2};transport=UDP>\r\n".format(ua.name,ua.ip,ua.port)
+    To ="To:<sip:{0}@{1};transport=UDP>;tag={2}\r\n".format(name2call,sips,tag_incoming)
+    From = "From:{0}<sip:{1}@{2};transport=UDP>;tag={3}\r\n".format(ua.name, ua.name,sips,tag_local)
+    Call_id = "Call-ID:{0}\r\n".format(call_id)  #全网唯一
+    cseq = "CSeq: {} ACK\r\n".format(cseq_ack)
+    uagent = "User-Agent: py\r\n"
+    cl = "Content-Length: 0\r\n"
+    content = "\r\n"
+    return cmd+route+maxForward+Contact+To+From+Call_id+cseq+uagent+cl+content
+
+def makeAckBYE(sips,ua,branch,tag_local,call_id,cseq_ack,tag_incoming):
+    cmd = "SIP/2.0 200 OK\r\n".format(name2call,sips,sips_port)
+    route = "Via:SIP/2.0/UDP {0}:{1};branch=z9hG4bk-{2}\r\n".format(ua.ip,ua.port,branch)
+    maxForward ="Max-Forwards:70\r\n"
+    Contact = "Contact:<sip:{0}@{1}:{2};transport=UDP>\r\n".format(ua.name,ua.ip,ua.port)
+    To ="To:<sip:{0}@{1};transport=UDP>;tag={2}\r\n".format(name2call,sips,tag_incoming)
+    From = "From:{0}<sip:{1}@{2};transport=UDP>;tag={3}\r\n".format(ua.name, ua.name,sips,tag_local)
+    Call_id = "Call-ID:{0}\r\n".format(call_id)  #全网唯一
+    cseq = "CSeq: {} ACK\r\n".format(cseq_ack)
+    uagent = "User-Agent: py\r\n"
+    cl = "Content-Length: 0\r\n"
+    content = "\r\n"
+    return cmd+route+maxForward+Contact+To+From+Call_id+cseq+uagent+cl+content
+
 
 def processUdpData(s):
     print('udp data monitoring...')
@@ -149,6 +195,7 @@ def decodeSensorData(msg): #格式验证和数据提取
     realm = None
     method = None
     qop = None
+    tag_to = None
     if not msg:
         return
     for msg in ls:
@@ -164,27 +211,39 @@ def decodeSensorData(msg): #格式验证和数据提取
         elif msg.startswith("WWW-Authenticate"):
             realm, nonce, algorithm, qop = getAuth(msg)
             print(realm, nonce, algorithm, qop)
+        elif msg.startswith("To"):
+            tag_to = getToInfo(msg)
+            print(tag_to)
+        elif msg.startswith("From"):
+            tag_in = getFromInfo(msg)
+            print(tag_in)
+        elif msg.startswith("Invite"):#入境会话请求
+            tag_to = getInvitedInfo(msg)
+        elif msg.startswith("BYE"):  # 入境会话取消消息
+            method, ua_tobye = getByeInfo(msg)
+            print(tag_to)
     if method == "REGISTER" and code=="200":
         print("ua register successful-------------------------")
-    if method == "INVITE" and code.startswith('4'):
-        print("ua call failed-------------------------")
+    if method == "INVITE" and not code: #有入境呼叫
+        print("ua having a comming call-------------------------")
+
+    if method == "INVITE" and code: #本地主叫方收到服务器的呼叫回复消息
+        if code == "200":#对方已接受会话,则本地主叫方应回复ACK给服务器
+            ackMsg = makeInviteAck(sips,ua,branch,'1fdsffdsffs',call_id,1,tag_to)
+            sendACKInvite(ackMsg)
+            print("ua is on the wire-------------------------")
+        if code.startswith('4'):
+            print('call failed due to "{}"'.format(status))
     if method == "REGISTER" and code == "401" and status == "Unauthorized":
         #回复登录密码信息
         resp= genResponce(nonce,ua.name,realm,ua.passwd,method,qop)
         authmsg = makeAuthMsg(sips,ua,branch,tag,call_id,cseq_reg,rinstance,nonce,realm,resp,nc)
         sendAuth(authmsg)
         print('sent auth__________',authmsg)
-
-sss = 'SIP/2.0 401 Unauthorized\r\n'\
-        'Via: SIP/2.0/UDP 192.168.1.5:12345;branch=z9hG4bk-jkfljkslj32jkl;received=11.0.0.88;received=11.0.0.88\r\n'\
-        'From: 112 <sip:112@192.168.1.5;transport=UDP>;tag=1233ffs\r\n'\
-        'To: 112 <sip:112@0192.168.1.5;transport=UDP>;tag=1193417672\r\n'\
-        'Call-ID: fjkdlsjfkdlsjfkldsf\r\n'\
-        'CSeq: 1 REGISTER\r\n'\
-        'WWW-Authenticate: Digest realm="ltsip.cn", nonce="02fbfa80e68e9c1bc189975eaeadc6cb", algorithm=MD5, qop="auth"\r\n'\
-        'Subject: Rel\r\n'\
-        'Content-Length: 0\r\n'
-s.sendto(sss.encode('utf-8', 'ignore'), (sips, 12345))
+    if method == "BYE": #收到BYE消息，给服务器回复ACK
+        ackMsg = makeAckBYE(sips,ua,branch_incoming,tag,call_id_incoming,cseq_incoming,tag_incoming)
+        sendACKInvite(ackMsg)
+        print("ua is call ended with incoming 'BYE'-------------------------")
 
 def genResponce(nonce,username,realm,passwd,method,qop):
     # 普通认证方法：容易破解
@@ -226,6 +285,42 @@ def getCallID(msg):
     call_id = subs[1]
     return call_id
 
+def getToInfo(msg):
+    if not msg.startswith("To"):
+        return None
+    i = msg.find('tag=')
+    if i < 0:
+        return None
+    tag = msg[i:].strip('tag=')
+    return tag
+
+def getFromInfo(msg):
+    if not msg.startswith("From"):
+        return None
+    i = msg.find('tag=')
+    if i < 0:
+        return None
+    tag = msg[i:].strip('tag=')
+    return tag
+
+def getInvitedInfo(msg):
+    if not msg.startswith("INVITE"):
+        return None
+    subs = msg.split(' ')
+    if len(subs) < 3:
+        return None
+    request, ua_incoming = subs[0], subs[1]
+    return (request,ua_incoming)
+
+def getByeInfo(msg):
+    if not msg.startswith("BYE"):
+        return None
+    subs = msg.split(' ')
+    if len(subs) < 3:
+        return None
+    request, ua_incoming = subs[0], subs[1]
+    return (request,ua_incoming)
+
 def getAuth(msg):
     #例子'WWW-Authenticate: Digest realm="ltsip.cn", nonce="02fbfa80e68e9c1bc189975eaeadc6cb", algorithm=MD5, qop="auth"'
     #注意字符串中的逗号和引号
@@ -257,6 +352,10 @@ def sendAuth(authmsg):
     cseq_reg += 1
     print("ua Sent register msg............\n",authmsg)
 
+def sendACKInvite(ackmsg):
+    s.sendto(ackmsg.encode('utf-8', 'ignore'), (sips, 5060))
+    print("ua Sent register msg............\n",ackmsg)
+
 class MyDialog(QtWidgets.QDialog,Ui_Dialog):
     mySignal = QtCore.pyqtSignal(int)
     def __init__(self):
@@ -266,6 +365,7 @@ class MyDialog(QtWidgets.QDialog,Ui_Dialog):
         self.pushButtonReg.clicked.connect(self.sendReg) #
 
         self.pushButtonCall.clicked.connect(self.sendCall) #注意此处的myFun不带括号
+        self.pushButtonCancelCall.clicked.connect(self.sendBye)
         #
         # self.dial.valueChanged.connect(self.myFun3)  #信号和槽都不带括号，与qt中使用区别
 
@@ -282,6 +382,13 @@ class MyDialog(QtWidgets.QDialog,Ui_Dialog):
         s.sendto(callmsg.encode('utf-8', 'ignore'), (sips, 5060))
         cseq_call += 1
         print("ua Sent calling msg............\n", callmsg)
+
+    def sendBye(self):
+        global cseq_call
+        bye = makeByeMsg(sips, ua, branch, "1fdsffdsffs", call_id, cseq_call, tag_in)
+        s.sendto(bye.encode('utf-8', 'ignore'), (sips, 5060))
+        cseq_call += 1
+        print("ua Sent calling msg............\n", bye)
 
 
 if __name__ == '__main__':

@@ -72,3 +72,93 @@ Authorization: Digest username="115",realm="ltsip.cn",nonce="02fbfa80e68e9c1bc18
 Allow-Events: presence, kpml
 Content-Length: 0
 To: "115"<sip:115@11.0.0.3;transport=UDP>
+
+
+本地发起会话，对方会话接收，服务器回复的消息如下：（紧接着，本地发起方需要给服务器回复ACK消息）
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 11.0.0.88:5068;branch=z9hG4bK-d8754z-240dbef83d508696-1---d8754z-;received=11.0.0.88
+From: "115" <sip:115@11.0.0.3;transport=UDP>;tag=6529ab77
+To: <sip:111@11.0.0.3;transport=UDP>;tag=950071782
+Call-ID: YTZhZTQ4MmU5ZTJjY2FiZmI5M2FkNTJlNWQyYzQyODA.
+CSeq: 1 INVITE
+Contact: <sip:111@11.0.0.3:5060;transport=UDP>
+Content-Type: application/sdp
+Subject: 
+Content-Length:   191
+
+v=0
+o=DBL 1 1 IN IP4 11.0.0.3
+s=DBL
+c=IN IP4 11.0.0.3
+t=0 0
+m=audio 6000 RTP/AVP 8 101
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+a=ptime:20
+a=sendrecv
+
+
+
+发起方回复ACK
+ACK sip:111@11.0.0.3:5060;transport=UDP SIP/2.0
+Via: SIP/2.0/UDP 11.0.0.88:5068;branch=z9hG4bK-d8754z-be817b0ad5a05eee-1---d8754z-
+Max-Forwards: 70
+Contact: <sip:115@11.0.0.88:5068;transport=UDP>
+To: <sip:111@11.0.0.3;transport=UDP>;tag=950071782
+From: "115"<sip:115@11.0.0.3;transport=UDP>;tag=6529ab77
+Call-ID: YTZhZTQ4MmU5ZTJjY2FiZmI5M2FkNTJlNWQyYzQyODA.
+CSeq: 1 ACK
+User-Agent: Zoiper for Windows 2.43 r24984
+Content-Length: 0
+
+
+对方挂断
+BYE sip:115@11.0.0.88:5068 SIP/2.0
+Via: SIP/2.0/UDP 11.0.0.3:5060;rport;branch=z9hG4bK1046087094
+From: <sip:111@11.0.0.3:5060>;tag=1791818293
+To: <sip:115@11.0.0.88:5068>;tag=5a54ca4f
+Call-ID: 1745950516@115
+CSeq: 40 BYE
+Max-Forwards: 70
+User-Agent: LtSip2.0
+Subject: Rel
+Content-Length: 0
+
+本地对对方挂断的响应
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 11.0.0.3:5060;rport=5060;branch=z9hG4bK1046087094
+Contact: <sip:115@11.0.0.88:5068>
+To: <sip:115@11.0.0.88:5068>;tag=5a54ca4f
+From: <sip:111@11.0.0.3:5060>;tag=1791818293
+Call-ID: 1745950516@115
+CSeq: 40 BYE
+User-Agent: Zoiper for Windows 2.43 r24984
+Content-Length: 0
+
+
+本地挂断
+BYE sip:111@11.0.0.3:5060;transport=UDP SIP/2.0
+Via: SIP/2.0/UDP 11.0.0.88:5068;branch=z9hG4bK-d8754z-363606f274a2b689-1---d8754z-
+Max-Forwards: 70
+Contact: <sip:115@11.0.0.88:5068;transport=UDP>
+To: <sip:111@11.0.0.3;transport=UDP>;tag=1745062268
+From: "115"<sip:115@11.0.0.3;transport=UDP>;tag=54319e7b
+Call-ID: ZDQ3NDUwMWE5YmQ0OWYyNzAyMmRiOTVkMGJlMTFlMTI.
+CSeq: 2 BYE
+User-Agent: Zoiper for Windows 2.43 r24984
+Content-Length: 0
+
+
+服务器响应
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 11.0.0.88:5068;branch=z9hG4bK-d8754z-363606f274a2b689-1---d8754z-;received=11.0.0.88
+From: "115" <sip:115@11.0.0.3;transport=UDP>;tag=54319e7b
+To: <sip:111@11.0.0.3;transport=UDP>;tag=1745062268
+Call-ID: ZDQ3NDUwMWE5YmQ0OWYyNzAyMmRiOTVkMGJlMTFlMTI.
+CSeq: 2 BYE
+Contact: <sip:111@11.0.0.3:5060;transport=UDP>
+Subject: Rel
+Content-Length: 0
+
+
